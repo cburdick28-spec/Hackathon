@@ -125,16 +125,19 @@ def clear_messages(user_id: str, room: str) -> None:
 def get_or_create_deck(user_id: str, name: str) -> str:
     """Return the deck id for *name*, creating it if it doesn't exist."""
     client = get_supabase()
-    res = (
-        client.table("flashcard_decks")
-        .select("id")
-        .eq("user_id", user_id)
-        .eq("name", name)
-        .maybe_single()
-        .execute()
-    )
-    if res.data:
-        return res.data["id"]
+    try:
+        res = (
+            client.table("flashcard_decks")
+            .select("id")
+            .eq("user_id", user_id)
+            .eq("name", name)
+            .maybe_single()
+            .execute()
+        )
+        if res and res.data:
+            return res.data["id"]
+    except Exception:
+        pass
     ins = (
         client.table("flashcard_decks")
         .insert({"user_id": user_id, "name": name})
