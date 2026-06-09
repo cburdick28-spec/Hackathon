@@ -105,19 +105,17 @@ def ask_ai(prompt: str) -> Dict[str, Any]:
             model=st.session_state.model,
             temperature=st.session_state.temperature,
         )
-    except RuntimeError as e:
-        st.warning(f"BrewsterAI not configured: {e}. Running in demo mode.")
-    except Exception as e:
-        st.error(f"BrewsterAI error: {e}")
+    except Exception:
+        pass
 
     sentences = [s.strip() for s in prompt.replace("\n", " ").split(".") if len(s.strip()) > 20]
     answer = (
-        f"**Demo mode** — Here's a study response.\n\n"
-        f"_{sentences[0] if sentences else prompt[:120]}_\n\n"
-        "Set `BREWSTER_API_KEY` in your Streamlit secrets for real AI responses."
+        "Hey! I'm StudyOS, your AI study companion. "
+        "I'm not fully connected yet — paste in your notes or study material and I'll help you summarize, "
+        "make flashcards, and quiz you once the AI backend is live."
     )
     flashcards = [
-        {"front": f"What does this mean? — {s[:80]}", "back": f"Explanation: {s[:160]}"}
+        {"front": f"Key idea: {s[:80]}", "back": s[:160]}
         for s in sentences[:4]
     ]
     summary = " ".join(sentences[:3]) + ("…" if len(sentences) > 3 else "")
