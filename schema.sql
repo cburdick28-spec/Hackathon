@@ -1,5 +1,6 @@
 -- ============================================================
 -- StudyOS — Supabase schema
+-- Idempotent: safe to re-run on an existing project.
 -- Run this in: Supabase Dashboard → SQL Editor → New query
 -- ============================================================
 
@@ -15,10 +16,15 @@ create table if not exists profiles (
 
 alter table profiles enable row level security;
 
+drop policy if exists "Users can read own profile"   on profiles;
+drop policy if exists "Users can upsert own profile" on profiles;
+drop policy if exists "Users can insert own profile" on profiles;
+drop policy if exists "Users can update own profile" on profiles;
+
 create policy "Users can read own profile"
   on profiles for select using (auth.uid() = id);
 
-create policy "Users can upsert own profile"
+create policy "Users can insert own profile"
   on profiles for insert with check (auth.uid() = id);
 
 create policy "Users can update own profile"
@@ -37,6 +43,10 @@ create table if not exists chat_messages (
 create index if not exists chat_messages_user_room_idx on chat_messages (user_id, room, created_at);
 
 alter table chat_messages enable row level security;
+
+drop policy if exists "Users can read own messages"   on chat_messages;
+drop policy if exists "Users can insert own messages" on chat_messages;
+drop policy if exists "Users can delete own messages" on chat_messages;
 
 create policy "Users can read own messages"
   on chat_messages for select using (auth.uid() = user_id);
@@ -57,6 +67,10 @@ create table if not exists flashcard_decks (
 );
 
 alter table flashcard_decks enable row level security;
+
+drop policy if exists "Users can read own decks"   on flashcard_decks;
+drop policy if exists "Users can insert own decks" on flashcard_decks;
+drop policy if exists "Users can delete own decks" on flashcard_decks;
 
 create policy "Users can read own decks"
   on flashcard_decks for select using (auth.uid() = user_id);
@@ -81,6 +95,10 @@ create index if not exists flashcards_deck_idx on flashcards (deck_id, created_a
 
 alter table flashcards enable row level security;
 
+drop policy if exists "Users can read own flashcards"   on flashcards;
+drop policy if exists "Users can insert own flashcards" on flashcards;
+drop policy if exists "Users can delete own flashcards" on flashcards;
+
 create policy "Users can read own flashcards"
   on flashcards for select using (auth.uid() = user_id);
 
@@ -101,6 +119,10 @@ create table if not exists pdf_summaries (
 );
 
 alter table pdf_summaries enable row level security;
+
+drop policy if exists "Users can read own summaries"   on pdf_summaries;
+drop policy if exists "Users can insert own summaries" on pdf_summaries;
+drop policy if exists "Users can delete own summaries" on pdf_summaries;
 
 create policy "Users can read own summaries"
   on pdf_summaries for select using (auth.uid() = user_id);
