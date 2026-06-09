@@ -31,10 +31,14 @@ def get_supabase() -> Client:
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────
 
-def sign_up(email: str, password: str) -> dict:
-    """Register a new user. Returns the supabase auth response dict."""
+def sign_up(email: str, password: str, username: str = "") -> dict:
+    """Register a new user. Passes username as metadata for the DB trigger."""
     client = get_supabase()
-    res = client.auth.sign_up({"email": email, "password": password})
+    res = client.auth.sign_up({
+        "email": email,
+        "password": password,
+        "options": {"data": {"username": username}},
+    })
     return res
 
 
