@@ -5,7 +5,6 @@ Supabase edition  |  Streamlit app
 
 from __future__ import annotations
 
-import io
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
@@ -20,11 +19,6 @@ st.set_page_config(
 )
 
 # ── optional deps ─────────────────────────────────────────────────────────────
-
-try:
-    from PyPDF2 import PdfReader
-except ImportError:
-    PdfReader = None
 
 try:
     from PIL import Image
@@ -93,7 +87,6 @@ DEFAULTS: Dict[str, Any] = {
     "fc_show_back": False,
     # scratch buffers
     "last_user_message": "",
-    "pdf_text": "",
     "ocr_text": "",
 }
 
@@ -131,19 +124,6 @@ def ask_ai(prompt: str) -> Dict[str, Any]:
     return {"answer": answer, "flashcards": flashcards, "summary": summary or prompt[:200]}
 
 # ── PDF / OCR helpers ─────────────────────────────────────────────────────────
-
-def extract_pdf_text(uploaded_file) -> str:
-    if PdfReader is None:
-        st.error("PyPDF2 not installed. Run: `pip install PyPDF2`")
-        return ""
-    try:
-        data = uploaded_file.read()
-        reader = PdfReader(io.BytesIO(data))
-        return "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
-    except Exception as e:
-        st.error(f"PDF extraction failed: {e}")
-        return ""
-
 
 def extract_image_text(uploaded_file) -> str:
     if not OCR_AVAILABLE:
@@ -390,9 +370,8 @@ with st.sidebar:
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
-tab_chat, tab_pdf, tab_cards, tab_ocr, tab_history = st.tabs([
+tab_chat, tab_cards, tab_ocr, tab_history = st.tabs([
     "💬 AI Study Assistant",
-    "📄 PDF Summary",
     "🃏 Flashcards",
     "🖼 Image Notes",
     "📚 Past Summaries",
@@ -440,7 +419,7 @@ with tab_chat:
     user_input = st.chat_input("Ask a question or paste notes to study…")
 
     if triggered_prefix:
-        context = st.session_state.last_user_message or st.session_state.pdf_text[:500]
+        context = st.session_state.last_user_message
         if not context:
             st.warning("Type a message first or upload a PDF so I have content to work with.")
         else:
@@ -475,60 +454,6 @@ with tab_chat:
             st.session_state[chat_key] = []
             st.session_state[cache_key] = True
             st.rerun()
-
-# ╔═══════════════════════╗
-# ║   Tab 2 — PDF Summary ║
-# ╚═══════════════════════╝
-
-with tab_pdf:
-    st.markdown("### Upload a PDF to summarize")
-
-    uploaded_pdf = st.file_uploader("Choose a PDF file", type=["pdf"], key="pdf_uploader")
-
-    if uploaded_pdf:
-        with st.spinner("Extracting text…"):
-            text = extract_pdf_text(uploaded_pdf)
-            st.session_state.pdf_text = text
-
-        if text:
-            word_count = len(text.split())
-            st.success(f"Extracted {word_count:,} words from **{uploaded_pdf.name}**")
-
-            with st.expander("Preview extracted text (first 2 000 chars)"):
-                st.text(text[:2000] + ("…" if len(text) > 2000 else ""))
-
-            col_sum, col_cards = st.columns(2)
-
-            with col_sum:
-                if st.button("✨ Summarize PDF", use_container_width=True, type="primary"):
-                    prompt = f"Summarize the following document in clear, structured paragraphs:\n\n{text[:4000]}"
-                    with st.spinner("Summarizing…"):
-                        resp = ask_ai(prompt)
-                    summary_text = resp.get("summary") or resp.get("answer", "")
-                    st.markdown("#### Summary")
-                    st.markdown(summary_text)
-                    # Persist to Supabase
-                    save_pdf_summary(user_id, uploaded_pdf.name, text, summary_text)
-                    st.caption("✅ Summary saved to your history.")
-
-                    new_cards = resp.get("flashcards", [])
-                    if new_cards:
-                        add_cards_to_deck(user_id, new_cards)
-                        st.info(f"Also generated {len(new_cards)} flashcards.")
-
-            with col_cards:
-                if st.button("🃏 Generate flashcards from PDF", use_container_width=True):
-                    prompt = f"Generate 8 detailed flashcards (question/answer pairs) from:\n\n{text[:4000]}"
-                    with st.spinner("Generating flashcards…"):
-                        resp = ask_ai(prompt)
-                    new_cards = resp.get("flashcards", [])
-                    if new_cards:
-                        add_cards_to_deck(user_id, new_cards)
-                        st.success(f"Added {len(new_cards)} flashcards to **{st.session_state.fc_deck_name}**.")
-                    else:
-                        st.info("No flashcards returned. Try Summarize first.")
-        else:
-            st.warning("Could not extract text. The PDF may be scanned — try the Image Notes tab.")
 
 # ╔══════════════════════╗
 # ║   Tab 3 — Flashcards ║
