@@ -197,10 +197,9 @@ def render_auth_wall():
                     st.warning("All fields are required.")
                     return
                 try:
-                    res = sign_up(email, password)
+                    res = sign_up(email, password, username)
                     if res.user:
-                        upsert_profile(res.user.id, username)
-                        st.success("Account created! Check your email to confirm, then sign in.")
+                        st.success("Account created! You can sign in now.")
                     else:
                         st.error("Sign-up failed. Try a different email.")
                 except Exception as e:
