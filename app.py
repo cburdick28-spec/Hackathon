@@ -340,7 +340,7 @@ with st.sidebar:
         ["brewster-small", "brewster-medium", "brewster-large"],
         index=["brewster-small", "brewster-medium", "brewster-large"].index(st.session_state.model),
     )
-    st.session_state.temperature = st.slider("Temperature", 0.0, 1.0, st.session_state.temperature, step=0.05)
+    st.session_state.temperature = st.slider("Strength", 0.0, 1.0, st.session_state.temperature, step=0.05)
 
     st.divider()
 
