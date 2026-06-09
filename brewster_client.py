@@ -1,52 +1,88 @@
-import os
+"""
+BrewsterAI client for StudyOS.
+
+Set BREWSTER_API_KEY (and optionally BREWSTER_API_URL) in
+  .streamlit/secrets.toml  (local dev)
+  Streamlit Cloud → App settings → Secrets  (production)
+
+Expected API response shape:
+  {
+    "answer":     "<markdown reply>",
+    "flashcards": [{"front": "...", "back": "..."}],
+    "summary":    "<plain-text summary>"
+  }
+"""
+
+from __future__ import annotations
+
 import json
-from typing import Dict, Any
+from typing import Any, Dict
 
 import requests
-from dotenv import load_dotenv
+import streamlit as st
 
-load_dotenv()
-
-API_KEY = os.getenv("BREWSTER_API_KEY")
-BREWSTER_URL = os.getenv("BREWSTER_API_URL", "https://api.brewster.ai/v1/generate")
+BREWSTER_URL: str = st.secrets.get("BREWSTER_API_URL", "https://api.brewster.ai/v1/generate")
+REQUEST_TIMEOUT = 30
 
 
-def call_brewster(prompt: str, model: str = "brewster-medium", temperature: float = 0.2) -> Dict[str, Any]:
+def call_brewster(
+    prompt: str,
+    model: str = "brewster-medium",
+    temperature: float = 0.2,
+) -> Dict[str, Any]:
     """
-    Minimal BrewsterAI client.
+    Call the BrewsterAI API and return a normalised response dict.
 
-    Reads BREWSTER_API_KEY from environment (or .env). Sends a JSON payload and
-    expects a JSON response with keys 'answer', 'flashcards', and 'summary' if
-    the backend supports that. Raises RuntimeError when API key is missing.
-
-    This file is intentionally simple — adjust to match the real BrewsterAI API.
+    Raises:
+        RuntimeError – BREWSTER_API_KEY not set in Streamlit secrets.
+        requests.HTTPError – non-2xx response.
     """
-    if not API_KEY:
-        raise RuntimeError("BREWSTER_API_KEY not set. Set it in your environment or .env file.")
+    api_key: str = st.secrets.get("BREWSTER_API_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError(
+            "BREWSTER_API_KEY is not set. "
+            "Add it to .streamlit/secrets.toml or Streamlit Cloud secrets."
+        )
 
     headers = {
-        "Authorization": f"Bearer {API_KEY}",
+        "Authorization": f"Bearer {api_key}",
         "Content-Type": "application/json",
+        "Accept": "application/json",
     }
-
-    payload = {
+    payload: Dict[str, Any] = {
         "model": model,
         "prompt": prompt,
         "temperature": temperature,
-        # Add other fields your API requires (max_tokens, stop, etc.)
+        "max_tokens": 1024,
     }
 
-    resp = requests.post(BREWSTER_URL, headers=headers, json=payload, timeout=30)
+    resp = requests.post(BREWSTER_URL, headers=headers, json=payload, timeout=REQUEST_TIMEOUT)
     resp.raise_for_status()
 
-    data = resp.json()
+    try:
+        data = resp.json()
+    except ValueError:
+        return {"answer": resp.text, "flashcards": [], "summary": ""}
 
-    # Normalize response into the expected structure
-    if isinstance(data, dict):
-        return {
-            "answer": data.get("answer") or data.get("text") or json.dumps(data),
-            "flashcards": data.get("flashcards") or [],
-            "summary": data.get("summary") or "",
-        }
+    if not isinstance(data, dict):
+        return {"answer": str(data), "flashcards": [], "summary": ""}
 
-    return {"answer": str(data), "flashcards": [], "summary": ""}
+    answer = (
+        data.get("answer")
+        or data.get("text")
+        or data.get("output")
+        or data.get("response")
+        or json.dumps(data)
+    )
+
+    raw_cards = data.get("flashcards") or []
+    valid_cards = [
+        fc for fc in raw_cards
+        if isinstance(fc, dict) and fc.get("front") and fc.get("back")
+    ]
+
+    return {
+        "answer": str(answer),
+        "flashcards": valid_cards,
+        "summary": str(data.get("summary") or data.get("abstract") or ""),
+    }
