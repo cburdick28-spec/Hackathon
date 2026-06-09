@@ -110,3 +110,22 @@ create policy "Users can insert own summaries"
 
 create policy "Users can delete own summaries"
   on pdf_summaries for delete using (auth.uid() = user_id);
+
+-- ── Auto-create profile on sign-up (bypasses RLS via SECURITY DEFINER) ───────
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (id, username)
+  values (
+    NEW.id,
+    coalesce(NEW.raw_user_meta_data->>'username', split_part(NEW.email, '@', 1))
+  )
+  on conflict (id) do nothing;
+  return NEW;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();

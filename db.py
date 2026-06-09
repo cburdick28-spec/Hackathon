@@ -78,15 +78,18 @@ def upsert_profile(user_id: str, username: str) -> None:
 
 
 def get_profile(user_id: str) -> Optional[dict]:
-    client = get_supabase()
-    res = (
-        client.table("profiles")
-        .select("*")
-        .eq("id", user_id)
-        .maybe_single()
-        .execute()
-    )
-    return res.data
+    try:
+        client = get_supabase()
+        res = (
+            client.table("profiles")
+            .select("*")
+            .eq("id", user_id)
+            .maybe_single()
+            .execute()
+        )
+        return res.data if res else None
+    except Exception:
+        return None
 
 
 # ── Chat helpers ──────────────────────────────────────────────────────────────

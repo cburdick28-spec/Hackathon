@@ -35,7 +35,7 @@ except ImportError:
 
 from db import (
     sign_in, sign_up, sign_out, restore_session,
-    get_profile, upsert_profile,
+    get_profile,
     save_message, load_messages, clear_messages,
     get_or_create_deck, save_flashcards, load_flashcards,
     load_decks, delete_flashcard, delete_deck,
@@ -313,8 +313,12 @@ if not require_auth():
 
 user = current_user()
 user_id: str = user.id
-profile = get_profile(user_id) or {}
-username: str = profile.get("username") or user.email.split("@")[0]
+try:
+    profile = get_profile(user_id) or {}
+    username: str = profile.get("username") or user.email.split("@")[0]
+except Exception:
+    profile = {}
+    username: str = user.email.split("@")[0]
 
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
