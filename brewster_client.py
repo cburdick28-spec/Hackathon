@@ -8,7 +8,6 @@ Set ANTHROPIC_API_KEY in:
 
 from __future__ import annotations
 
-import json
 from typing import Any, Dict
 
 import anthropic
@@ -20,21 +19,43 @@ _MODEL_MAP = {
     "brewster-large":  "claude-sonnet-4-6",
 }
 
-_SYSTEM = """\
-You are StudyOS, a friendly AI study companion. Respond to the user and return a JSON object with exactly these three fields:
+_SYSTEM = (
+    "You are StudyOS, a friendly AI study companion. "
+    "Always respond using the study_response tool. "
+    "For greetings or simple questions, return an empty flashcards array and empty summary. "
+    "For study material, generate 3-6 flashcards and a short summary."
+)
 
-{
-  "answer": "<your full markdown response to the user>",
-  "flashcards": [{"front": "<question>", "back": "<answer>"}, ...],
-  "summary": "<1-3 sentence plain-text summary of the key points>"
+_TOOL = {
+    "name": "study_response",
+    "description": "Return a structured study response to the user.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "answer": {
+                "type": "string",
+                "description": "Full markdown response shown in chat.",
+            },
+            "flashcards": {
+                "type": "array",
+                "description": "Study flashcards. Empty array for conversational turns.",
+                "items": {
+                    "type": "object",
+                    "properties": {
+                        "front": {"type": "string"},
+                        "back":  {"type": "string"},
+                    },
+                    "required": ["front", "back"],
+                },
+            },
+            "summary": {
+                "type": "string",
+                "description": "1-3 sentence plain-text summary. Empty for conversational turns.",
+            },
+        },
+        "required": ["answer", "flashcards", "summary"],
+    },
 }
-
-Rules:
-- "answer": clear, educational markdown. For greetings or short questions, just answer naturally with an empty flashcards array.
-- "flashcards": 3-6 cards when the input contains study material; empty array otherwise.
-- "summary": brief plain-text distillation of key points; empty string for conversational turns.
-- Return only valid JSON — nothing outside the JSON object.
-"""
 
 
 def call_brewster(
@@ -52,30 +73,27 @@ def call_brewster(
         max_tokens=1024,
         temperature=temperature,
         system=_SYSTEM,
+        tools=[_TOOL],
+        tool_choice={"type": "tool", "name": "study_response"},
         messages=[{"role": "user", "content": prompt}],
     )
 
-    raw = message.content[0].text.strip()
+    for block in message.content:
+        if block.type == "tool_use" and block.name == "study_response":
+            data = block.input
+            valid_cards = [
+                fc for fc in (data.get("flashcards") or [])
+                if isinstance(fc, dict) and fc.get("front") and fc.get("back")
+            ]
+            return {
+                "answer":     str(data.get("answer") or ""),
+                "flashcards": valid_cards,
+                "summary":    str(data.get("summary") or ""),
+            }
 
-    # Strip markdown code fences if the model wraps output in ```json ... ```
-    if raw.startswith("```"):
-        raw = raw.split("```", 2)[1]
-        if raw.startswith("json"):
-            raw = raw[4:]
-        raw = raw.rsplit("```", 1)[0].strip()
+    # Fallback: return any text content if tool call is missing
+    for block in message.content:
+        if hasattr(block, "text"):
+            return {"answer": block.text, "flashcards": [], "summary": ""}
 
-    try:
-        data = json.loads(raw)
-    except ValueError:
-        return {"answer": raw, "flashcards": [], "summary": ""}
-
-    valid_cards = [
-        fc for fc in (data.get("flashcards") or [])
-        if isinstance(fc, dict) and fc.get("front") and fc.get("back")
-    ]
-
-    return {
-        "answer": str(data.get("answer") or raw),
-        "flashcards": valid_cards,
-        "summary": str(data.get("summary") or ""),
-    }
+    return {"answer": "", "flashcards": [], "summary": ""}
