@@ -541,36 +541,108 @@ with st.sidebar:
 # ── Timer banner (main area) ──────────────────────────────────────────────────
 
 if st.session_state.timer_end:
-    _rem = max(0, int(st.session_state.timer_end - time.time()))
+    _rem   = max(0, int(st.session_state.timer_end - time.time()))
+    _total = st.session_state.timer_duration * 60
     if _rem > 0:
         components.html(
             f"""
-            <div style="text-align:center;font-size:2.6rem;font-weight:900;
-                        font-family:monospace;color:#6366f1;
-                        padding:6px 0 2px 0;line-height:1">
-                <span id="sos-timer">--:--</span>
+            <style>
+              body {{ margin:0; background:transparent; font-family:system-ui,sans-serif; }}
+            </style>
+            <div style="display:flex;flex-direction:column;align-items:center;padding:10px 0 6px">
+              <!-- Ring -->
+              <div style="position:relative;width:150px;height:150px">
+                <svg width="150" height="150" viewBox="0 0 150 150">
+                  <circle cx="75" cy="75" r="64"
+                    fill="none" stroke="#e5e7eb" stroke-width="8"/>
+                  <circle id="ring" cx="75" cy="75" r="64"
+                    fill="none" stroke="#6366f1" stroke-width="8"
+                    stroke-linecap="round"
+                    stroke-dasharray="402.12" stroke-dashoffset="0"
+                    transform="rotate(-90 75 75)"/>
+                </svg>
+                <!-- Countdown text centred inside ring -->
+                <div id="timer-face"
+                     style="position:absolute;top:50%;left:50%;
+                            transform:translate(-50%,-50%);
+                            font-size:2.2rem;font-weight:900;
+                            font-family:monospace;color:#6366f1;
+                            white-space:nowrap;line-height:1">
+                  <span id="sos-timer">--:--</span>
+                </div>
+              </div>
+              <div style="margin-top:6px;font-size:0.72rem;color:#9ca3af;
+                          text-transform:uppercase;letter-spacing:0.1em">
+                Study Timer
+              </div>
             </div>
-            <div style="text-align:center;font-size:0.78rem;color:#9ca3af;
-                        letter-spacing:0.08em;text-transform:uppercase">
-                Study timer
-            </div>
+
             <script>
             (function(){{
-                var end = Date.now() + {_rem} * 1000;
-                function tick(){{
-                    var r = Math.max(0, end - Date.now());
-                    var m = Math.floor(r / 60000);
-                    var s = Math.floor((r % 60000) / 1000);
-                    var el = document.getElementById('sos-timer');
-                    if (el) el.innerText = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
-                    if (r > 0) setTimeout(tick, 500);
-                    else if (el) el.innerText = "Time's up!";
+              var total  = {_total};
+              var end    = Date.now() + {_rem} * 1000;
+              var circ   = 402.12;
+
+              function playAlarm() {{
+                try {{
+                  var ctx = new (window.AudioContext || window.webkitAudioContext)();
+                  function beep(freq, t, dur) {{
+                    var o = ctx.createOscillator();
+                    var g = ctx.createGain();
+                    o.connect(g); g.connect(ctx.destination);
+                    o.type = 'sine'; o.frequency.value = freq;
+                    g.gain.setValueAtTime(0.45, ctx.currentTime + t);
+                    g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + dur);
+                    o.start(ctx.currentTime + t);
+                    o.stop(ctx.currentTime + t + dur + 0.05);
+                  }}
+                  beep(880,  0.00, 0.25);
+                  beep(1100, 0.30, 0.25);
+                  beep(880,  0.60, 0.25);
+                  beep(1320, 0.90, 0.60);
+                }} catch(e) {{}}
+              }}
+
+              function color(ratio) {{
+                if (ratio > 0.50) return '#6366f1';
+                if (ratio > 0.25) return '#f59e0b';
+                return '#ef4444';
+              }}
+
+              function tick() {{
+                var r     = Math.max(0, end - Date.now());
+                var ratio = r / (total * 1000);
+                var m     = Math.floor(r / 60000);
+                var s     = Math.floor((r % 60000) / 1000);
+                var c     = color(ratio);
+
+                var timerEl = document.getElementById('sos-timer');
+                var faceEl  = document.getElementById('timer-face');
+                var ringEl  = document.getElementById('ring');
+
+                if (timerEl) timerEl.innerText =
+                  String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+                if (faceEl) faceEl.style.color = c;
+                if (ringEl) {{
+                  ringEl.style.stroke = c;
+                  ringEl.setAttribute('stroke-dashoffset',
+                    (circ * (1 - ratio)).toFixed(2));
                 }}
-                tick();
+
+                if (r > 0) {{
+                  setTimeout(tick, 500);
+                }} else {{
+                  playAlarm();
+                  if (timerEl) timerEl.innerText = 'Done!';
+                  if (faceEl)  faceEl.style.color  = '#10b981';
+                  if (ringEl)  ringEl.style.stroke  = '#10b981';
+                }}
+              }}
+              tick();
             }})();
             </script>
             """,
-            height=70,
+            height=200,
         )
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
