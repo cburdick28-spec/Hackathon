@@ -40,30 +40,149 @@ from db import (
 
 st.markdown("""
 <style>
+/* ── Sidebar ──────────────────────────────────────────────────── */
+section[data-testid="stSidebar"] > div:first-child {
+    background: linear-gradient(160deg, #1e1b4b 0%, #312e81 60%, #4c1d95 100%);
+}
+section[data-testid="stSidebar"] p,
+section[data-testid="stSidebar"] span,
+section[data-testid="stSidebar"] label,
+section[data-testid="stSidebar"] div { color: #e0e7ff; }
+section[data-testid="stSidebar"] h1,
+section[data-testid="stSidebar"] h2,
+section[data-testid="stSidebar"] h3 { color: #fff !important; }
+section[data-testid="stSidebar"] hr { border-color: rgba(165,180,252,0.2); }
+section[data-testid="stSidebar"] [data-testid="stMetric"] {
+    background: rgba(255,255,255,0.08);
+    border-radius: 10px;
+    padding: 10px 14px;
+    border: 1px solid rgba(165,180,252,0.15);
+}
+section[data-testid="stSidebar"] [data-testid="stMetricValue"] { color: #a5b4fc !important; }
+
+/* ── Tabs ─────────────────────────────────────────────────────── */
+.stTabs [data-baseweb="tab-list"] {
+    gap: 6px;
+    border-bottom: 2px solid rgba(99,102,241,0.15);
+    padding-bottom: 0;
+}
+.stTabs [data-baseweb="tab"] {
+    border-radius: 10px 10px 0 0;
+    padding: 10px 18px;
+    font-weight: 600;
+    font-size: 0.88rem;
+    transition: all 0.2s;
+}
+.stTabs [aria-selected="true"] {
+    background: rgba(99,102,241,0.08) !important;
+    border-bottom: 3px solid #6366f1 !important;
+    color: #6366f1 !important;
+}
+
+/* ── Buttons ──────────────────────────────────────────────────── */
+.stButton > button[kind="primary"] {
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    border: none;
+    border-radius: 10px;
+    color: #fff;
+    font-weight: 600;
+    box-shadow: 0 2px 8px rgba(99,102,241,0.35);
+    transition: all 0.2s;
+}
+.stButton > button[kind="primary"]:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 14px rgba(99,102,241,0.45);
+}
+.stButton > button[kind="secondary"] {
+    border-radius: 10px;
+    border: 1.5px solid rgba(99,102,241,0.3);
+    color: #6366f1;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+.stButton > button[kind="secondary"]:hover {
+    background: rgba(99,102,241,0.06);
+    border-color: #6366f1;
+}
+.stButton > button:not([kind]) {
+    border-radius: 10px;
+    font-weight: 500;
+    transition: all 0.2s;
+}
+
+/* ── Inputs ───────────────────────────────────────────────────── */
+.stTextInput > div > div > input,
+.stTextArea > div > div > textarea {
+    border-radius: 10px;
+    border: 1.5px solid rgba(99,102,241,0.2) !important;
+    transition: border-color 0.2s;
+}
+.stTextInput > div > div > input:focus,
+.stTextArea > div > div > textarea:focus {
+    border-color: #6366f1 !important;
+    box-shadow: 0 0 0 3px rgba(99,102,241,0.1) !important;
+}
+
+/* ── Expanders ────────────────────────────────────────────────── */
+[data-testid="stExpander"] {
+    border: 1px solid rgba(99,102,241,0.15) !important;
+    border-radius: 12px !important;
+    overflow: hidden;
+}
+
+/* ── Flashcards ───────────────────────────────────────────────── */
 .flip-inner {
     padding: 1.8rem 1.5rem;
-    border-radius: 12px;
-    border: 1px solid rgba(128,128,128,0.25);
-    background: var(--secondary-background-color);
-    min-height: 110px;
+    border-radius: 14px;
+    border: 1px solid rgba(99,102,241,0.18);
+    background: linear-gradient(135deg, rgba(99,102,241,0.04) 0%, rgba(139,92,246,0.04) 100%);
+    min-height: 120px;
+    box-shadow: 0 2px 12px rgba(99,102,241,0.08);
 }
 .card-label {
     font-size: 0.68rem;
     font-weight: 700;
-    letter-spacing: 0.1em;
+    letter-spacing: 0.12em;
     text-transform: uppercase;
-    opacity: 0.4;
+    color: #8b5cf6;
+    opacity: 0.7;
     margin-bottom: 0.5rem;
 }
-.card-text { font-size: 1.1rem; line-height: 1.55; }
+.card-text { font-size: 1.1rem; line-height: 1.6; }
+
+/* ── Pill / badges ────────────────────────────────────────────── */
 .pill {
     display: inline-block;
-    padding: 2px 10px;
+    padding: 3px 12px;
     border-radius: 999px;
-    background: rgba(99,102,241,0.12);
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.12));
     color: #6366f1;
     font-size: 0.76rem;
+    font-weight: 700;
+    border: 1px solid rgba(99,102,241,0.2);
+}
+.room-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 3px 12px;
+    border-radius: 999px;
+    background: rgba(99,102,241,0.08);
+    color: #8b5cf6;
+    font-size: 0.8rem;
     font-weight: 600;
+    border: 1px solid rgba(139,92,246,0.2);
+}
+
+/* ── Section headers ──────────────────────────────────────────── */
+.tab-header {
+    font-size: 1.5rem;
+    font-weight: 800;
+    background: linear-gradient(135deg, #6366f1 0%, #8b5cf6 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+    margin-bottom: 0.1rem;
 }
 </style>
 """, unsafe_allow_html=True)
@@ -301,8 +420,8 @@ except Exception:
 # ── Sidebar ───────────────────────────────────────────────────────────────────
 
 with st.sidebar:
-    st.markdown(f"## 🎓 StudyOS")
-    st.markdown(f"👋 **{username}**")
+    st.markdown('<p style="font-size:1.5rem;font-weight:900;color:#a5b4fc;margin-bottom:0">🎓 StudyOS</p>', unsafe_allow_html=True)
+    st.markdown(f'<p style="color:#c7d2fe;margin-top:2px">👋 &nbsp;<b>{username}</b></p>', unsafe_allow_html=True)
     st.divider()
 
     st.session_state.room = st.selectbox(
@@ -380,7 +499,19 @@ tab_chat, tab_cards, tab_ocr, tab_history = st.tabs([
 # ╚══════════════════════════════╝
 
 with tab_chat:
-    st.markdown(f"### Good to see you, {username} 👋")
+    _head_col, _clear_col = st.columns([5, 1])
+    with _head_col:
+        st.markdown(f'<div class="tab-header">Good to see you, {username} 👋</div>', unsafe_allow_html=True)
+        st.markdown(f'<span class="room-badge">📍 {st.session_state.room}</span>', unsafe_allow_html=True)
+        st.markdown("<br>", unsafe_allow_html=True)
+    with _clear_col:
+        st.markdown("<br>", unsafe_allow_html=True)
+        if st.button("🗑 Clear chat", type="secondary", use_container_width=True):
+            room = st.session_state.room
+            clear_messages(user_id, room)
+            st.session_state[f"chat_{room}"] = []
+            st.session_state[f"chat_loaded_{room}"] = True
+            st.rerun()
 
     room = st.session_state.room
 
@@ -446,21 +577,15 @@ with tab_chat:
 
         st.rerun()
 
-    if st.session_state[chat_key]:
-        if st.button("Clear chat history", type="secondary"):
-            clear_messages(user_id, room)
-            st.session_state[chat_key] = []
-            st.session_state[cache_key] = True
-            st.rerun()
 
 # ╔══════════════════════╗
 # ║   Tab 3 — Flashcards ║
 # ╚══════════════════════╝
 
 with tab_cards:
-    # Ensure the deck is loaded
     ensure_deck(user_id)
-    st.markdown(f"### Deck: {st.session_state.fc_deck_name}")
+    st.markdown(f'<div class="tab-header">🃏 {st.session_state.fc_deck_name}</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     render_flashcard_ui(user_id)
 
     st.divider()
@@ -480,7 +605,8 @@ with tab_cards:
 # ╚═══════════════════════╝
 
 with tab_ocr:
-    st.markdown("### Upload an image of your notes")
+    st.markdown('<div class="tab-header">🖼 Image Notes</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
 
     if not OCR_AVAILABLE:
         st.warning(
@@ -536,7 +662,8 @@ with tab_ocr:
 # ╚══════════════════════════╝
 
 with tab_history:
-    st.markdown("### Your saved summaries")
+    st.markdown('<div class="tab-header">📚 Past Summaries</div>', unsafe_allow_html=True)
+    st.markdown("<br>", unsafe_allow_html=True)
     summaries = load_pdf_summaries(user_id)
 
     if not summaries:
