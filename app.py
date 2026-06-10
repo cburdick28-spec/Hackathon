@@ -10,6 +10,7 @@ import time
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
+import streamlit.components.v1 as components
 
 # ── page config (must be first Streamlit call) ────────────────────────────────
 
@@ -214,6 +215,7 @@ DEFAULTS: Dict[str, Any] = {
     # scratch buffers
     "last_user_message": "",
     "ocr_text": "",
+    "ocr_filename": "",
     # timer
     "timer_duration": 5,
     "timer_end": None,
@@ -464,7 +466,7 @@ with st.sidebar:
     if st.session_state.timer_end:
         _remaining = max(0, int(st.session_state.timer_end - time.time()))
         if _remaining > 0:
-            st.markdown(
+            components.html(
                 f"""
                 <div style="text-align:center;font-size:2rem;font-weight:900;
                             color:#a5b4fc;font-family:monospace;padding:6px 0">
@@ -477,19 +479,19 @@ with st.sidebar:
                         var r = Math.max(0, end - Date.now());
                         var m = Math.floor(r/60000);
                         var s = Math.floor((r%60000)/1000);
-                        var el = document.getElementById('sos-timer');
-                        if(el) el.innerText = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+                        var el = document.getElementById(‘sos-timer’);
+                        if(el) el.innerText = String(m).padStart(2,’0’)+’:’+String(s).padStart(2,’0’);
                         if(r > 0) setTimeout(tick, 500);
-                        else if(el) el.innerText = "⏰ Time’s up!";
+                        else if(el) el.innerText = "Time’s up!";
                     }}
                     tick();
                 }})();
                 </script>
                 """,
-                unsafe_allow_html=True,
+                height=60,
             )
         else:
-            st.success("Time's up! Take a break.")
+            st.success("Time’s up! Take a break.")
             st.session_state.timer_end = None
 
     st.divider()
@@ -693,31 +695,36 @@ with tab_ocr:
     if uploaded_file:
         is_pdf = uploaded_file.name.lower().endswith(".pdf")
 
-        if is_pdf:
-            with st.spinner("Reading PDF…"):
-                extracted_text = extract_pdf_text(uploaded_file)
-                st.session_state.ocr_text = extracted_text
-            if extracted_text:
-                st.success(f"Extracted ~{len(extracted_text.split()):,} words from **{uploaded_file.name}**")
-                with st.expander("Preview text"):
-                    st.text(extracted_text[:2000] + ("…" if len(extracted_text) > 2000 else ""))
+        # Only re-extract when a new file is uploaded — prevents stream exhaustion on reruns
+        if uploaded_file.name != st.session_state.ocr_filename:
+            if is_pdf:
+                with st.spinner("Reading PDF…"):
+                    st.session_state.ocr_text = extract_pdf_text(uploaded_file)
             else:
-                st.warning("Could not read this PDF — it may be scanned. Try uploading an image instead.")
-        else:
+                if OCR_AVAILABLE:
+                    with st.spinner("Running OCR…"):
+                        st.session_state.ocr_text = extract_image_text(uploaded_file)
+                else:
+                    st.session_state.ocr_text = ""
+            st.session_state.ocr_filename = uploaded_file.name
+
+        extracted_text = st.session_state.ocr_text
+
+        if not is_pdf:
             st.image(uploaded_file, caption="Uploaded image", use_column_width=True)
             if not OCR_AVAILABLE:
                 st.warning("OCR is not available in this environment.")
-            else:
-                with st.spinner("Running OCR…"):
-                    extracted_text = extract_image_text(uploaded_file)
-                    st.session_state.ocr_text = extracted_text
-                if extracted_text:
-                    st.success(f"Extracted ~{len(extracted_text.split()):,} words")
-                    with st.expander("Extracted text"):
-                        st.text(extracted_text)
-                else:
-                    st.warning("No text detected. Try a clearer or higher-resolution image.")
-                    extracted_text = ""
+
+        if extracted_text:
+            st.success(f"Extracted ~{len(extracted_text.split()):,} words from **{uploaded_file.name}**")
+            with st.expander("Preview text"):
+                st.text(extracted_text[:2000] + ("…" if len(extracted_text) > 2000 else ""))
+        else:
+            st.warning(
+                "Could not extract text. "
+                + ("The PDF may be scanned — try uploading an image instead." if is_pdf
+                   else "Try a clearer or higher-resolution image.")
+            )
 
         extracted_text = st.session_state.get("ocr_text", "")
         if extracted_text:
