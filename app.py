@@ -835,18 +835,18 @@ with tab_ocr:
             with col_b:
                 if st.button("Make flashcards", use_container_width=True):
                     with st.spinner("Generating flashcards…"):
-                        resp = ask_ai(f"Generate 6 flashcards from these notes:\n\n{extracted_text[:4000]}")
+                        resp = ask_ai(
+                            f"Create exactly 6 flashcards from the text below. "
+                            f"Each flashcard must have a clear question on the front and a concise answer on the back.\n\n"
+                            f"{extracted_text[:4000]}"
+                        )
                     new_cards = resp.get("flashcards", [])
                     if new_cards:
-                        before = len(st.session_state.fc_cards)
                         add_cards_to_deck(user_id, new_cards)
-                        added = len(st.session_state.fc_cards) - before
-                        if added > 0:
-                            st.success(f"Added {added} flashcard(s) to **{st.session_state.fc_deck_name}**.")
-                        else:
-                            st.warning("Cards could not be saved. Check that you are signed in and try again.")
+                        st.success(f"Added {len(new_cards)} flashcard(s) to **{st.session_state.fc_deck_name}**.")
+                        st.rerun()
                     else:
-                        st.info("No flashcards returned — try again.")
+                        st.warning("No flashcards were returned. Try again or use a shorter text selection.")
 
 # ╔══════════════════════════╗
 # ║   Tab 5 — Past Summaries ║

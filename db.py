@@ -19,18 +19,12 @@ from supabase import create_client, Client
 from typing import Optional
 
 
-# ── Client (cached base, auth token injected per request) ────────────────────
-
-@st.cache_resource
-def _base_client() -> Client:
-    url: str = st.secrets["SUPABASE_URL"]
-    key: str = st.secrets["SUPABASE_ANON_KEY"]
-    return create_client(url, key)
-
+# ── Client — fresh per call so the JWT is always current ─────────────────────
 
 def get_supabase() -> Client:
-    """Return the shared client with the current user's JWT applied."""
-    client = _base_client()
+    url: str = st.secrets["SUPABASE_URL"]
+    key: str = st.secrets["SUPABASE_ANON_KEY"]
+    client = create_client(url, key)
     token = st.session_state.get("access_token")
     if token:
         client.postgrest.auth(token)
