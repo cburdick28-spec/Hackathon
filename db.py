@@ -97,7 +97,7 @@ def get_profile(user_id: str) -> Optional[dict]:
 def save_message(user_id: str, room: str, role: str, message: str) -> None:
     client = get_supabase()
     client.table("chat_messages").insert(
-        {"user_id": user_id, "room": room, "role": role, "message": message}
+        {"user_id": user_id, "room": room, "role": role, "message": message[:10_000]}
     ).execute()
 
 
@@ -152,12 +152,15 @@ def save_flashcards(user_id: str, deck_id: str, cards: list[dict]) -> None:
         return
     client = get_supabase()
     rows = [
-        {"user_id": user_id, "deck_id": deck_id, "front": c["front"], "back": c["back"]}
+        {"user_id": user_id, "deck_id": deck_id, "front": c["front"][:500], "back": c["back"][:1000]}
         for c in cards
         if c.get("front") and c.get("back")
     ]
     if rows:
-        client.table("flashcards").insert(rows).execute()
+        try:
+            client.table("flashcards").insert(rows).execute()
+        except Exception:
+            pass
 
 
 def load_flashcards(user_id: str, deck_id: str) -> list[dict]:

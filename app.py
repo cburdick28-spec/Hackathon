@@ -557,7 +557,10 @@ with tab_chat:
     if user_input:
         st.session_state.last_user_message = user_input
         st.session_state[chat_key].append({"role": "user", "message": user_input})
-        save_message(user_id, room, "user", user_input)
+        try:
+            save_message(user_id, room, "user", user_input)
+        except Exception:
+            pass
 
         with st.chat_message("user", avatar="🙂"):
             st.markdown(user_input)
@@ -568,7 +571,10 @@ with tab_chat:
             answer = resp.get("answer", "")
             st.markdown(answer)
             st.session_state[chat_key].append({"role": "assistant", "message": answer})
-            save_message(user_id, room, "assistant", answer)
+            try:
+                save_message(user_id, room, "assistant", answer)
+            except Exception:
+                pass
 
             new_cards = resp.get("flashcards", [])
             if new_cards:
