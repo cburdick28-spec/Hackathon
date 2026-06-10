@@ -205,9 +205,9 @@ def save_pdf_summary(
     client.table("pdf_summaries").insert(
         {
             "user_id": user_id,
-            "filename": filename,
-            "extracted_text": extracted_text[:50_000],   # guard against huge docs
-            "summary": summary,
+            "filename": filename[:255],
+            "extracted_text": (extracted_text or "")[:20_000],
+            "summary": (summary or "")[:10_000],
         }
     ).execute()
 

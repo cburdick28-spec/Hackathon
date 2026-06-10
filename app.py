@@ -513,8 +513,11 @@ with tab_ocr:
                         summary_text = resp.get("summary") or resp.get("answer", "")
                         st.markdown("#### Summary")
                         st.markdown(summary_text)
-                        save_pdf_summary(user_id, uploaded_img.name, ocr_text, summary_text)
-                        st.caption("✅ Summary saved to your history.")
+                        try:
+                            save_pdf_summary(user_id, uploaded_img.name, ocr_text, summary_text)
+                            st.caption("✅ Summary saved to your history.")
+                        except Exception:
+                            st.caption("⚠️ Could not save summary — it's still shown above.")
                         if resp.get("flashcards"):
                             add_cards_to_deck(user_id, resp["flashcards"])
                 with col_b:
