@@ -488,10 +488,10 @@ with st.sidebar:
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
 tab_chat, tab_cards, tab_ocr, tab_history = st.tabs([
-    "💬 AI Study Assistant",
-    "🃏 Flashcards",
-    "🖼 Image Notes",
-    "📚 Past Summaries",
+    "AI Study Assistant",
+    "Flashcards",
+    "Image Notes",
+    "Past Summaries",
 ])
 
 # ╔══════════════════════════════╗
@@ -501,7 +501,7 @@ tab_chat, tab_cards, tab_ocr, tab_history = st.tabs([
 with tab_chat:
     _head_col, _clear_col = st.columns([5, 1])
     with _head_col:
-        st.markdown(f'<div class="tab-header">Good to see you, {username} 👋</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="tab-header">Good to see you, {username}</div>', unsafe_allow_html=True)
         st.markdown(f'<span class="room-badge">📍 {st.session_state.room}</span>', unsafe_allow_html=True)
         st.markdown("<br>", unsafe_allow_html=True)
     with _clear_col:
@@ -590,7 +590,7 @@ with tab_chat:
 
 with tab_cards:
     ensure_deck(user_id)
-    st.markdown(f'<div class="tab-header">🃏 {st.session_state.fc_deck_name}</div>', unsafe_allow_html=True)
+    st.markdown(f'<div class="tab-header">{st.session_state.fc_deck_name}</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     render_flashcard_ui(user_id)
 
@@ -611,7 +611,7 @@ with tab_cards:
 # ╚═══════════════════════╝
 
 with tab_ocr:
-    st.markdown('<div class="tab-header">🖼 Image Notes</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-header">Image Notes</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
     if not OCR_AVAILABLE:
@@ -668,7 +668,7 @@ with tab_ocr:
 # ╚══════════════════════════╝
 
 with tab_history:
-    st.markdown('<div class="tab-header">📚 Past Summaries</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-header">Past Summaries</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
     summaries = load_pdf_summaries(user_id)
 
