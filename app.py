@@ -29,6 +29,12 @@ except ImportError:
     PdfReader = None
 
 try:
+    import fitz  # PyMuPDF
+    PYMUPDF_AVAILABLE = True
+except ImportError:
+    PYMUPDF_AVAILABLE = False
+
+try:
     from PIL import Image
     import pytesseract
     OCR_AVAILABLE = True
@@ -257,15 +263,33 @@ def ask_ai(prompt: str) -> Dict[str, Any]:
 
 # ── PDF / OCR helpers ─────────────────────────────────────────────────────────
 
+def pdf_to_pil_pages(uploaded_file, dpi: int = 150) -> list:
+    """Render each PDF page to a PIL Image via PyMuPDF. Max 20 pages."""
+    if not PYMUPDF_AVAILABLE:
+        return []
+    try:
+        doc = fitz.open(stream=uploaded_file.read(), filetype="pdf")
+        scale = dpi / 72
+        mat = fitz.Matrix(scale, scale)
+        pages = []
+        for i in range(min(len(doc), 20)):
+            pix = doc[i].get_pixmap(matrix=mat)
+            img = Image.frombytes("RGB", [pix.width, pix.height], pix.samples)
+            pages.append(img)
+        return pages
+    except Exception as e:
+        st.error(f"PDF rendering failed: {e}")
+        return []
+
+
 def extract_pdf_text(uploaded_file) -> str:
+    """Fallback: direct text extraction via PyPDF2 (text-based PDFs only)."""
     if PdfReader is None:
-        st.error("PyPDF2 not installed.")
         return ""
     try:
         reader = PdfReader(io.BytesIO(uploaded_file.read()))
         return "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
-    except Exception as e:
-        st.error(f"PDF extraction failed: {e}")
+    except Exception:
         return ""
 
 
@@ -873,9 +897,27 @@ with tab_ocr:
         # Only re-extract when a new file is uploaded — prevents stream exhaustion on reruns
         if uploaded_file.name != st.session_state.ocr_filename:
             if is_pdf:
-                with st.spinner("Reading PDF…"):
-                    st.session_state.ocr_text = extract_pdf_text(uploaded_file)
+                if PYMUPDF_AVAILABLE and OCR_AVAILABLE:
+                    with st.spinner("Converting PDF pages to images…"):
+                        pages = pdf_to_pil_pages(uploaded_file)
+                    if pages:
+                        with st.spinner(f"Running OCR on {len(pages)} page(s)…"):
+                            page_texts = [
+                                pytesseract.image_to_string(p).strip()
+                                for p in pages
+                            ]
+                        st.session_state.ocr_text = "\n\n".join(t for t in page_texts if t)
+                        st.session_state["_pdf_pages"] = pages
+                    else:
+                        st.session_state.ocr_text = ""
+                        st.session_state["_pdf_pages"] = []
+                else:
+                    # Fallback: direct text extraction (text-based PDFs only)
+                    with st.spinner("Reading PDF…"):
+                        st.session_state.ocr_text = extract_pdf_text(uploaded_file)
+                    st.session_state["_pdf_pages"] = []
             else:
+                st.session_state["_pdf_pages"] = []
                 if OCR_AVAILABLE:
                     with st.spinner("Running OCR…"):
                         st.session_state.ocr_text = extract_image_text(uploaded_file)
@@ -884,8 +926,16 @@ with tab_ocr:
             st.session_state.ocr_filename = uploaded_file.name
 
         extracted_text = st.session_state.ocr_text
+        pdf_pages     = st.session_state.get("_pdf_pages", [])
 
-        if not is_pdf:
+        # Preview
+        if is_pdf and pdf_pages:
+            st.image(pdf_pages[0], caption=f"Page 1 of {len(pdf_pages)} — {uploaded_file.name}", use_column_width=True)
+            if len(pdf_pages) > 1:
+                with st.expander(f"View all {len(pdf_pages)} pages"):
+                    for i, pg in enumerate(pdf_pages):
+                        st.image(pg, caption=f"Page {i + 1}", use_column_width=True)
+        elif not is_pdf:
             st.image(uploaded_file, caption="Uploaded image", use_column_width=True)
             if not OCR_AVAILABLE:
                 st.warning("OCR is not available in this environment.")
@@ -897,7 +947,7 @@ with tab_ocr:
         else:
             st.warning(
                 "Could not extract text. "
-                + ("The PDF may be scanned — try uploading an image instead." if is_pdf
+                + ("Try a clearer scan or check that Tesseract is installed." if is_pdf
                    else "Try a clearer or higher-resolution image.")
             )
 
