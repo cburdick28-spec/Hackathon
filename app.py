@@ -5,6 +5,7 @@ Supabase edition  |  Streamlit app
 
 from __future__ import annotations
 
+import io
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
@@ -19,6 +20,11 @@ st.set_page_config(
 )
 
 # ── optional deps ─────────────────────────────────────────────────────────────
+
+try:
+    from PyPDF2 import PdfReader
+except ImportError:
+    PdfReader = None
 
 try:
     from PIL import Image
@@ -241,6 +247,18 @@ def ask_ai(prompt: str) -> Dict[str, Any]:
     return {"answer": answer, "flashcards": flashcards, "summary": summary or prompt[:200]}
 
 # ── PDF / OCR helpers ─────────────────────────────────────────────────────────
+
+def extract_pdf_text(uploaded_file) -> str:
+    if PdfReader is None:
+        st.error("PyPDF2 not installed.")
+        return ""
+    try:
+        reader = PdfReader(io.BytesIO(uploaded_file.read()))
+        return "\n\n".join(p.extract_text() or "" for p in reader.pages).strip()
+    except Exception as e:
+        st.error(f"PDF extraction failed: {e}")
+        return ""
+
 
 def extract_image_text(uploaded_file) -> str:
     if not OCR_AVAILABLE:
@@ -611,57 +629,70 @@ with tab_cards:
 # ╚═══════════════════════╝
 
 with tab_ocr:
-    st.markdown('<div class="tab-header">Image Notes</div>', unsafe_allow_html=True)
+    st.markdown('<div class="tab-header">Notes Transcriber</div>', unsafe_allow_html=True)
     st.markdown("<br>", unsafe_allow_html=True)
 
-    if not OCR_AVAILABLE:
-        st.warning(
-            "OCR requires `Pillow`, `pytesseract`, and the system `tesseract` binary. "
-            "Add them to your requirements and packages.txt (see README)."
-        )
-
-    uploaded_img = st.file_uploader(
-        "Choose an image (PNG, JPG, WEBP)", type=["png", "jpg", "jpeg", "webp"], key="img_uploader"
+    uploaded_file = st.file_uploader(
+        "Upload an image or PDF of your notes",
+        type=["png", "jpg", "jpeg", "webp", "pdf"],
+        key="notes_uploader",
     )
 
-    if uploaded_img:
-        st.image(uploaded_img, caption="Uploaded image", use_column_width=True)
+    if uploaded_file:
+        is_pdf = uploaded_file.name.lower().endswith(".pdf")
 
-        if OCR_AVAILABLE:
-            with st.spinner("Running OCR…"):
-                ocr_text = extract_image_text(uploaded_img)
-                st.session_state.ocr_text = ocr_text
-
-            if ocr_text:
-                st.success(f"OCR extracted ~{len(ocr_text.split())} words")
-                with st.expander("Extracted text"):
-                    st.text(ocr_text)
-
-                col_a, col_b = st.columns(2)
-                with col_a:
-                    if st.button("✨ Summarize notes", use_container_width=True, type="primary"):
-                        with st.spinner("Summarizing…"):
-                            resp = ask_ai(f"Summarize these handwritten notes:\n\n{ocr_text}")
-                        summary_text = resp.get("summary") or resp.get("answer", "")
-                        st.markdown("#### Summary")
-                        st.markdown(summary_text)
-                        try:
-                            save_pdf_summary(user_id, uploaded_img.name, ocr_text, summary_text)
-                            st.caption("✅ Summary saved to your history.")
-                        except Exception:
-                            st.caption("⚠️ Could not save summary — it's still shown above.")
-                        if resp.get("flashcards"):
-                            add_cards_to_deck(user_id, resp["flashcards"])
-                with col_b:
-                    if st.button("🃏 Flashcards from notes", use_container_width=True):
-                        with st.spinner("Generating flashcards…"):
-                            resp = ask_ai(f"Generate 6 flashcards from these notes:\n\n{ocr_text}")
-                        new_cards = resp.get("flashcards", [])
-                        if new_cards:
-                            add_cards_to_deck(user_id, new_cards)
-                            st.success(f"Added {len(new_cards)} flashcards.")
+        if is_pdf:
+            with st.spinner("Reading PDF…"):
+                extracted_text = extract_pdf_text(uploaded_file)
+                st.session_state.ocr_text = extracted_text
+            if extracted_text:
+                st.success(f"Extracted ~{len(extracted_text.split()):,} words from **{uploaded_file.name}**")
+                with st.expander("Preview text"):
+                    st.text(extracted_text[:2000] + ("…" if len(extracted_text) > 2000 else ""))
             else:
-                st.warning("No text detected. Try a clearer or higher-resolution image.")
+                st.warning("Could not read this PDF — it may be scanned. Try uploading an image instead.")
+        else:
+            st.image(uploaded_file, caption="Uploaded image", use_column_width=True)
+            if not OCR_AVAILABLE:
+                st.warning("OCR is not available in this environment.")
+            else:
+                with st.spinner("Running OCR…"):
+                    extracted_text = extract_image_text(uploaded_file)
+                    st.session_state.ocr_text = extracted_text
+                if extracted_text:
+                    st.success(f"Extracted ~{len(extracted_text.split()):,} words")
+                    with st.expander("Extracted text"):
+                        st.text(extracted_text)
+                else:
+                    st.warning("No text detected. Try a clearer or higher-resolution image.")
+                    extracted_text = ""
+
+        extracted_text = st.session_state.get("ocr_text", "")
+        if extracted_text:
+            st.markdown("<br>", unsafe_allow_html=True)
+            col_a, col_b = st.columns(2)
+            with col_a:
+                if st.button("Summarize", use_container_width=True, type="primary"):
+                    with st.spinner("Summarizing…"):
+                        resp = ask_ai(f"Summarize these notes:\n\n{extracted_text[:4000]}")
+                    summary_text = resp.get("summary") or resp.get("answer", "")
+                    st.markdown("#### Summary")
+                    st.markdown(summary_text)
+                    try:
+                        save_pdf_summary(user_id, uploaded_file.name, extracted_text, summary_text)
+                        st.caption("Summary saved to your history.")
+                    except Exception:
+                        st.caption("Could not save summary — it's still shown above.")
+                    if resp.get("flashcards"):
+                        add_cards_to_deck(user_id, resp["flashcards"])
+            with col_b:
+                if st.button("Make flashcards", use_container_width=True):
+                    with st.spinner("Generating flashcards…"):
+                        resp = ask_ai(f"Generate 6 flashcards from these notes:\n\n{extracted_text[:4000]}")
+                    new_cards = resp.get("flashcards", [])
+                    if new_cards:
+                        add_cards_to_deck(user_id, new_cards)
+                        st.success(f"Added {len(new_cards)} flashcards.")
 
 # ╔══════════════════════════╗
 # ║   Tab 5 — Past Summaries ║
