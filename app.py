@@ -466,11 +466,9 @@ with st.sidebar:
     if st.session_state.timer_end:
         _remaining = max(0, int(st.session_state.timer_end - time.time()))
         if _remaining > 0:
-            _m, _s = divmod(_remaining, 60)
             st.markdown(
-                f'<p style="text-align:center;font-size:1.6rem;font-weight:900;'
-                f'color:#a5b4fc;font-family:monospace;margin:4px 0">'
-                f'{_m:02d}:{_s:02d}</p>',
+                '<p style="color:#a5b4fc;font-size:0.82rem;margin:2px 0 0 0">'
+                '&#9679; Timer running &mdash; see countdown above</p>',
                 unsafe_allow_html=True,
             )
         else:
