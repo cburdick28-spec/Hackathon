@@ -605,7 +605,7 @@ if _timer_active:
     badge = doc.createElement('div');
     badge.id = 'sos-badge';
     badge.style.cssText =
-      'position:fixed;bottom:28px;left:24px;z-index:99999;'
+      'position:fixed;bottom:28px;right:24px;z-index:99999;'
       + 'border-radius:18px;padding:10px 20px 12px;'
       + 'background:linear-gradient(135deg,#6366f1,#8b5cf6);'
       + 'box-shadow:0 6px 24px rgba(99,102,241,0.45);'
