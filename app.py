@@ -466,32 +466,15 @@ with st.sidebar:
     if st.session_state.timer_end:
         _remaining = max(0, int(st.session_state.timer_end - time.time()))
         if _remaining > 0:
-            components.html(
-                f"""
-                <div style="text-align:center;font-size:2rem;font-weight:900;
-                            color:#a5b4fc;font-family:monospace;padding:6px 0">
-                    <span id="sos-timer">--:--</span>
-                </div>
-                <script>
-                (function(){{
-                    var end = Date.now() + {_remaining} * 1000;
-                    function tick(){{
-                        var r = Math.max(0, end - Date.now());
-                        var m = Math.floor(r/60000);
-                        var s = Math.floor((r%60000)/1000);
-                        var el = document.getElementById(‘sos-timer’);
-                        if(el) el.innerText = String(m).padStart(2,’0’)+’:’+String(s).padStart(2,’0’);
-                        if(r > 0) setTimeout(tick, 500);
-                        else if(el) el.innerText = "Time’s up!";
-                    }}
-                    tick();
-                }})();
-                </script>
-                """,
-                height=60,
+            _m, _s = divmod(_remaining, 60)
+            st.markdown(
+                f’<p style="text-align:center;font-size:1.6rem;font-weight:900;’
+                f’color:#a5b4fc;font-family:monospace;margin:4px 0">’
+                f’{_m:02d}:{_s:02d}</p>’,
+                unsafe_allow_html=True,
             )
         else:
-            st.success("Time’s up! Take a break.")
+            st.success("Time’s up!")
             st.session_state.timer_end = None
 
     st.divider()
@@ -556,6 +539,41 @@ with st.sidebar:
     if st.button("Sign out"):
         sign_out()
         st.rerun()
+
+# ── Timer banner (main area) ──────────────────────────────────────────────────
+
+if st.session_state.timer_end:
+    _rem = max(0, int(st.session_state.timer_end - time.time()))
+    if _rem > 0:
+        components.html(
+            f"""
+            <div style="text-align:center;font-size:2.6rem;font-weight:900;
+                        font-family:monospace;color:#6366f1;
+                        padding:6px 0 2px 0;line-height:1">
+                <span id="sos-timer">--:--</span>
+            </div>
+            <div style="text-align:center;font-size:0.78rem;color:#9ca3af;
+                        letter-spacing:0.08em;text-transform:uppercase">
+                Study timer
+            </div>
+            <script>
+            (function(){{
+                var end = Date.now() + {_rem} * 1000;
+                function tick(){{
+                    var r = Math.max(0, end - Date.now());
+                    var m = Math.floor(r / 60000);
+                    var s = Math.floor((r % 60000) / 1000);
+                    var el = document.getElementById('sos-timer');
+                    if (el) el.innerText = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
+                    if (r > 0) setTimeout(tick, 500);
+                    else if (el) el.innerText = "Time’s up!";
+                }}
+                tick();
+            }})();
+            </script>
+            """,
+            height=70,
+        )
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
 
