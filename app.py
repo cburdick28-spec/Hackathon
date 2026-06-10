@@ -219,6 +219,9 @@ DEFAULTS: Dict[str, Any] = {
     # timer
     "timer_duration": 5,
     "timer_end": None,
+    # music
+    "music_type": "Off",
+    "music_volume": 30,
 }
 
 for k, v in DEFAULTS.items():
@@ -477,6 +480,21 @@ with st.sidebar:
 
     st.divider()
 
+    st.markdown("#### Study music")
+    _MUSIC_OPTS = ["Off", "Rain Noise", "Lo-fi Drone"]
+    st.session_state.music_type = st.radio(
+        "", _MUSIC_OPTS,
+        index=_MUSIC_OPTS.index(st.session_state.music_type),
+        horizontal=True,
+        label_visibility="collapsed",
+    )
+    if st.session_state.music_type != "Off":
+        st.session_state.music_volume = st.slider(
+            "Volume", 0, 100, st.session_state.music_volume, step=5,
+        )
+
+    st.divider()
+
     st.session_state.room = st.selectbox(
         "Study room",
         ["Room A", "Room B", "Personal", "Exam Prep"],
@@ -637,6 +655,81 @@ else:
   var el = window.parent.document.getElementById('sos-badge');
   if (el) el.parentNode.removeChild(el);
 })();
+</script>""", height=0)
+
+# ── Study music — audio context persisted on window.parent ───────────────────
+
+components.html(f"""<script>
+(function() {{
+  var par  = window.parent;
+  var type = "{st.session_state.music_type}";
+  var vol  = {st.session_state.music_volume / 100:.2f};
+
+  function stopAll() {{
+    if (par._sosACtx) {{
+      try {{ par._sosACtx.close(); }} catch(e) {{}}
+      par._sosACtx  = null;
+      par._sosAGain = null;
+      par._sosAType = null;
+      par._sosANodes = null;
+    }}
+  }}
+
+  if (type === "Off") {{ stopAll(); return; }}
+  if (par._sosAType && par._sosAType !== type) {{ stopAll(); }}
+
+  if (!par._sosACtx) {{
+    par._sosACtx   = new (window.AudioContext || window.webkitAudioContext)();
+    par._sosAGain  = par._sosACtx.createGain();
+    par._sosAGain.gain.value = vol;
+    par._sosAGain.connect(par._sosACtx.destination);
+    par._sosAType  = type;
+    par._sosANodes = [];
+
+    if (type === "Rain Noise") {{
+      var ctx = par._sosACtx, last = 0;
+      var proc = ctx.createScriptProcessor(2048, 1, 1);
+      proc.onaudioprocess = function(e) {{
+        var out = e.outputBuffer.getChannelData(0);
+        for (var i = 0; i < 2048; i++) {{
+          var w = Math.random() * 2 - 1;
+          out[i] = (last + 0.02 * w) / 1.02;
+          last = out[i];
+          out[i] *= 3.5;
+        }}
+      }};
+      // Run through a low-pass filter to soften harsh highs
+      var lpf = ctx.createBiquadFilter();
+      lpf.type = 'lowpass'; lpf.frequency.value = 1800;
+      proc.connect(lpf); lpf.connect(par._sosAGain);
+      par._sosANodes.push(proc, lpf);
+
+    }} else if (type === "Lo-fi Drone") {{
+      var ctx = par._sosACtx;
+      // Soft Cmaj7 chord spread across octaves
+      var freqs = [65.41, 82.41, 98.0, 130.81, 164.81, 196.0, 246.94];
+      freqs.forEach(function(f) {{
+        var osc = ctx.createOscillator();
+        var g   = ctx.createGain();
+        // Slow wobble per note for a warm, living feel
+        var lfo = ctx.createOscillator();
+        var lfoG = ctx.createGain();
+        lfo.frequency.value = 0.15 + Math.random() * 0.1;
+        lfoG.gain.value = 0.4;
+        lfo.connect(lfoG); lfoG.connect(osc.frequency);
+        lfo.start();
+        osc.type = 'sine'; osc.frequency.value = f;
+        g.gain.value = 0.055;
+        osc.connect(g); g.connect(par._sosAGain);
+        osc.start();
+        par._sosANodes.push(osc, lfo);
+      }});
+    }}
+  }} else {{
+    // Already playing — smooth volume update only
+    par._sosAGain.gain.setTargetAtTime(vol, par._sosACtx.currentTime, 0.15);
+  }}
+}})();
 </script>""", height=0)
 
 # ── Tabs ──────────────────────────────────────────────────────────────────────
