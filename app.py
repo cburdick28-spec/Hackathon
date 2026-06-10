@@ -512,10 +512,6 @@ with st.sidebar:
         horizontal=True,
         label_visibility="collapsed",
     )
-    if st.session_state.music_type != "Off":
-        st.session_state.music_volume = st.slider(
-            "Volume", 0, 100, st.session_state.music_volume, step=5,
-        )
 
     st.divider()
 
@@ -609,7 +605,7 @@ if _timer_active:
     badge = doc.createElement('div');
     badge.id = 'sos-badge';
     badge.style.cssText =
-      'position:fixed;bottom:28px;right:24px;z-index:99999;'
+      'position:fixed;bottom:28px;left:24px;z-index:99999;'
       + 'border-radius:18px;padding:10px 20px 12px;'
       + 'background:linear-gradient(135deg,#6366f1,#8b5cf6);'
       + 'box-shadow:0 6px 24px rgba(99,102,241,0.45);'
@@ -687,7 +683,7 @@ components.html(f"""<script>
 (function() {{
   var par  = window.parent;
   var type = "{st.session_state.music_type}";
-  var vol  = {st.session_state.music_volume / 100:.2f};
+  var vol  = 0.50;
 
   function stopAll() {{
     if (par._sosACtx) {{
