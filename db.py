@@ -19,14 +19,22 @@ from supabase import create_client, Client
 from typing import Optional
 
 
-# ── Client singleton (cached per Streamlit session) ──────────────────────────
+# ── Client (cached base, auth token injected per request) ────────────────────
 
 @st.cache_resource
-def get_supabase() -> Client:
-    """Return a single Supabase client reused across reruns."""
+def _base_client() -> Client:
     url: str = st.secrets["SUPABASE_URL"]
     key: str = st.secrets["SUPABASE_ANON_KEY"]
     return create_client(url, key)
+
+
+def get_supabase() -> Client:
+    """Return the shared client with the current user's JWT applied."""
+    client = _base_client()
+    token = st.session_state.get("access_token")
+    if token:
+        client.postgrest.auth(token)
+    return client
 
 
 # ── Auth helpers ──────────────────────────────────────────────────────────────

@@ -6,6 +6,7 @@ Supabase edition  |  Streamlit app
 from __future__ import annotations
 
 import io
+import time
 from typing import Any, Dict, List, Optional
 
 import streamlit as st
@@ -213,6 +214,9 @@ DEFAULTS: Dict[str, Any] = {
     # scratch buffers
     "last_user_message": "",
     "ocr_text": "",
+    # timer
+    "timer_duration": 5,
+    "timer_end": None,
 }
 
 for k, v in DEFAULTS.items():
@@ -440,6 +444,54 @@ except Exception:
 with st.sidebar:
     st.markdown('<p style="font-size:1.5rem;font-weight:900;color:#a5b4fc;margin-bottom:0">🎓 StudyOS</p>', unsafe_allow_html=True)
     st.markdown(f'<p style="color:#c7d2fe;margin-top:2px">👋 &nbsp;<b>{username}</b></p>', unsafe_allow_html=True)
+    st.divider()
+
+    st.markdown("#### Study timer")
+    st.session_state.timer_duration = st.radio(
+        "", [5, 10, 15], horizontal=True,
+        format_func=lambda x: f"{x} min",
+        index=[5, 10, 15].index(st.session_state.timer_duration),
+        label_visibility="collapsed",
+    )
+    _tc1, _tc2 = st.columns(2)
+    with _tc1:
+        if st.button("Start", use_container_width=True, type="primary", key="timer_start"):
+            st.session_state.timer_end = time.time() + st.session_state.timer_duration * 60
+    with _tc2:
+        if st.button("Stop", use_container_width=True, key="timer_stop"):
+            st.session_state.timer_end = None
+
+    if st.session_state.timer_end:
+        _remaining = max(0, int(st.session_state.timer_end - time.time()))
+        if _remaining > 0:
+            st.markdown(
+                f"""
+                <div style="text-align:center;font-size:2rem;font-weight:900;
+                            color:#a5b4fc;font-family:monospace;padding:6px 0">
+                    <span id="sos-timer">--:--</span>
+                </div>
+                <script>
+                (function(){{
+                    var end = Date.now() + {_remaining} * 1000;
+                    function tick(){{
+                        var r = Math.max(0, end - Date.now());
+                        var m = Math.floor(r/60000);
+                        var s = Math.floor((r%60000)/1000);
+                        var el = document.getElementById('sos-timer');
+                        if(el) el.innerText = String(m).padStart(2,'0')+':'+String(s).padStart(2,'0');
+                        if(r > 0) setTimeout(tick, 500);
+                        else if(el) el.innerText = "⏰ Time’s up!";
+                    }}
+                    tick();
+                }})();
+                </script>
+                """,
+                unsafe_allow_html=True,
+            )
+        else:
+            st.success("Time's up! Take a break.")
+            st.session_state.timer_end = None
+
     st.divider()
 
     st.session_state.room = st.selectbox(
@@ -691,8 +743,15 @@ with tab_ocr:
                         resp = ask_ai(f"Generate 6 flashcards from these notes:\n\n{extracted_text[:4000]}")
                     new_cards = resp.get("flashcards", [])
                     if new_cards:
+                        before = len(st.session_state.fc_cards)
                         add_cards_to_deck(user_id, new_cards)
-                        st.success(f"Added {len(new_cards)} flashcards.")
+                        added = len(st.session_state.fc_cards) - before
+                        if added > 0:
+                            st.success(f"Added {added} flashcard(s) to **{st.session_state.fc_deck_name}**.")
+                        else:
+                            st.warning("Cards could not be saved. Check that you are signed in and try again.")
+                    else:
+                        st.info("No flashcards returned — try again.")
 
 # ╔══════════════════════════╗
 # ║   Tab 5 — Past Summaries ║
