@@ -897,12 +897,16 @@ with tab_ocr:
                     with st.spinner("Converting PDF pages to images…"):
                         pages = pdf_to_pil_pages(uploaded_file)
                     if pages:
-                        with st.spinner(f"Running OCR on {len(pages)} page(s)…"):
-                            page_texts = [
-                                pytesseract.image_to_string(p).strip()
-                                for p in pages
-                            ]
-                        st.session_state.ocr_text = "\n\n".join(t for t in page_texts if t)
+                        try:
+                            with st.spinner(f"Running OCR on {len(pages)} page(s)…"):
+                                page_texts = [
+                                    pytesseract.image_to_string(p).strip()
+                                    for p in pages
+                                ]
+                            st.session_state.ocr_text = "\n\n".join(t for t in page_texts if t)
+                        except Exception as _ocr_err:
+                            st.error(f"OCR error: {_ocr_err}")
+                            st.session_state.ocr_text = ""
                         st.session_state["_pdf_pages"] = pages
                     else:
                         st.session_state.ocr_text = ""
@@ -926,13 +930,13 @@ with tab_ocr:
 
         # Preview
         if is_pdf and pdf_pages:
-            st.image(pdf_pages[0], caption=f"Page 1 of {len(pdf_pages)} — {uploaded_file.name}", use_column_width=True)
+            st.image(pdf_pages[0], caption=f"Page 1 of {len(pdf_pages)} — {uploaded_file.name}", use_container_width=True)
             if len(pdf_pages) > 1:
                 with st.expander(f"View all {len(pdf_pages)} pages"):
                     for i, pg in enumerate(pdf_pages):
-                        st.image(pg, caption=f"Page {i + 1}", use_column_width=True)
+                        st.image(pg, caption=f"Page {i + 1}", use_container_width=True)
         elif not is_pdf:
-            st.image(uploaded_file, caption="Uploaded image", use_column_width=True)
+            st.image(uploaded_file, caption="Uploaded image", use_container_width=True)
             if not OCR_AVAILABLE:
                 st.warning("OCR is not available in this environment.")
 
