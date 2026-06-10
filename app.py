@@ -468,13 +468,13 @@ with st.sidebar:
         if _remaining > 0:
             _m, _s = divmod(_remaining, 60)
             st.markdown(
-                f’<p style="text-align:center;font-size:1.6rem;font-weight:900;’
-                f’color:#a5b4fc;font-family:monospace;margin:4px 0">’
-                f’{_m:02d}:{_s:02d}</p>’,
+                f'<p style="text-align:center;font-size:1.6rem;font-weight:900;'
+                f'color:#a5b4fc;font-family:monospace;margin:4px 0">'
+                f'{_m:02d}:{_s:02d}</p>',
                 unsafe_allow_html=True,
             )
         else:
-            st.success("Time’s up!")
+            st.success("Time's up!")
             st.session_state.timer_end = None
 
     st.divider()
@@ -566,7 +566,7 @@ if st.session_state.timer_end:
                     var el = document.getElementById('sos-timer');
                     if (el) el.innerText = String(m).padStart(2,'0') + ':' + String(s).padStart(2,'0');
                     if (r > 0) setTimeout(tick, 500);
-                    else if (el) el.innerText = "Time’s up!";
+                    else if (el) el.innerText = "Time's up!";
                 }}
                 tick();
             }})();
